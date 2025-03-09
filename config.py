@@ -1,0 +1,8 @@
+DATASET_PATH = "datasets/cocostuff-10k/images"
+SEED = 42
+IMG_SIZE = 224
+SPLIT_RATIO = (0.70, 0.15, 0.15)
+EPOCHS = 100
+BATCH_SIZE = 256
+LEARNING_RATE = 0.001
+NUM_TEST = 5
