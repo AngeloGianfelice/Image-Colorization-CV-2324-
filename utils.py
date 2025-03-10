@@ -1,12 +1,37 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import config
+import cv2
+import torch
 
-def rgb2lab(): #TODO
-    pass 
+def rgb2lab(rgb_image): 
 
-def lab2rgb(): #TODO
-    pass 
+    image = rgb_image.permute(1,2,0)
+
+    # Convert to Lab color space
+    lab_image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2LAB).astype(np.float32)
+        
+    # Split channels
+    l = lab_image[:, :, 0] / 100 #normalize in [0,1]
+    ab = lab_image[:, :, 1:] / 128  # Normalize ab to [-1,1]
+
+    return l,ab
+    
+ 
+
+def lab2rgb(l_channel,ab_channel):
+
+    #denormalization 
+    ab_channel *= 128
+
+    # Step 2: Merge L and AB into (H, W, 3) format
+    Lab_image = torch.cat([l_channel, ab_channel], dim=0).cpu().permute(1, 2, 0).numpy().astype(np.float32)  # (H, W, 3)
+
+    # Step 3: Convert Lab → RGB using OpenCV
+    RGB_image = cv2.cvtColor(Lab_image, cv2.COLOR_Lab2RGB)
+
+    return RGB_image
+
+    
 
 def plot_loss(tlosses,vlosses, title="Loss Curve", xlabel="Epoch", ylabel="Loss"):
     plt.style.use('bmh')
@@ -19,7 +44,7 @@ def plot_loss(tlosses,vlosses, title="Loss Curve", xlabel="Epoch", ylabel="Loss"
     plt.plot(epochs, vlosses, marker='s', linestyle='--', color='darkorange', label="Validation Loss")
     
     # Labels & title
-    plt.xticks(epochs)
+    plt.xticks(np.arange(1,len(tlosses) + 1,5))
     plt.xlabel(xlabel, fontsize=12)
     plt.ylabel(ylabel, fontsize=12)
     plt.title(title, fontsize=14)

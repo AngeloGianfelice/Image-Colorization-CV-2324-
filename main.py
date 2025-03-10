@@ -2,13 +2,11 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-import cv2
-import numpy as np
 from tqdm import tqdm
 import config
 from colorizers import ColorizationAutoencoder
 from datasets import Cocostuff_Dataset
-from utils import rgb2lab,lab2rgb,plot_loss,plot_images
+from utils import lab2rgb,plot_loss,plot_images
 from random import randint
 
 # Create datasets
@@ -38,10 +36,13 @@ tloss_list=[]
 vloss_list=[]
 
 for epoch in range(config.EPOCHS):
+
     model.train()  # Set model to training mode
     train_loss = 0
     train_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS} [Training]", leave=False)
+    
     for batch_idx,(image_l, image_ab) in enumerate(train_progress):
+
         image_l, image_ab = image_l.to(device), image_ab.to(device)
         optimizer.zero_grad()
         output = model(image_l)
@@ -88,10 +89,12 @@ plot_loss(tloss_list,vloss_list)
 
 # === 5. Testing Phase === #
 def test_model(model, test_loader):
+
     model.eval()
     input_imgs=[]
     output_imgs=[]
     gt_imgs=[]
+
     # Run inference on test images
     dataiter=iter(test_loader)
     L, AB = next(dataiter)
@@ -102,26 +105,18 @@ def test_model(model, test_loader):
         AB_pred = model(L)
 
     for _ in range(config.NUM_TEST):
+
         idx=randint(0,config.BATCH_SIZE)
-        input_l_sample = L[idx] * 100 # Scale L from [0,1] to [0,100]
-        input_ab_sample = AB[idx] * 128   # Scale L from [0,1] to [0,100]
-        output_ab_sample = AB_pred[idx] * 128  # Scale AB from [-1,1] to [-128,127]
+        input_l_sample = L[idx] * 100 #normalize in [0,1]
+        input_ab_sample = AB[idx]
+        output_ab_sample = AB_pred[idx] 
 
-        # Step 2: Merge L and AB into (H, W, 3) format
-        Lab_image = torch.cat([input_l_sample, output_ab_sample], dim=0).cpu().permute(1, 2, 0).numpy().astype(np.float32)  # (H, W, 3)
-
-        # Step 3: Convert Lab → RGB using OpenCV
-        RGB_image = cv2.cvtColor(Lab_image, cv2.COLOR_Lab2RGB)
-
-        # Step 2: Merge L and AB into (H, W, 3) format
-        gt_lab = torch.cat([input_l_sample, input_ab_sample], dim=0).permute(1, 2, 0).cpu().numpy().astype(np.float32)  # (H, W, 3)
-
-        # Step 3: Convert Lab → RGB using OpenCV
-        gt_rgb = cv2.cvtColor(gt_lab, cv2.COLOR_Lab2RGB)
+        colorized = lab2rgb(input_l_sample,output_ab_sample)
+        ground_truth = lab2rgb(input_l_sample,input_ab_sample)
 
         input_imgs.append(input_l_sample.cpu().squeeze(0))
-        output_imgs.append(RGB_image)
-        gt_imgs.append(gt_rgb)
+        output_imgs.append(colorized)
+        gt_imgs.append(ground_truth)
 
     plot_images(input_imgs,output_imgs,gt_imgs)
 

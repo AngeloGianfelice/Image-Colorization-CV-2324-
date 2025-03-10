@@ -1,5 +1,4 @@
 import torch.nn as nn
-import torchvision.transforms as transforms
 
 class ColorizationAutoencoder(nn.Module):
     def __init__(self):

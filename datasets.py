@@ -7,9 +7,11 @@ import cv2
 import numpy as np
 import random
 import config
+from utils import rgb2lab
 
 class Cocostuff_Dataset(Dataset):
     def __init__(self, image_dir, phase="train", split_ratios=config.SPLIT_RATIO, image_size=config.IMG_SIZE, seed=config.SEED):
+        
         """
         Args:
             image_dir (str): Path to the directory containing all images.
@@ -56,9 +58,11 @@ class Cocostuff_Dataset(Dataset):
             self.augment = None  # No augmentation for val/test
 
     def __len__(self):
+
         return len(self.image_paths)
 
     def __getitem__(self, idx):
+
         image_path= self.image_paths[idx]  # Get image path
         image = Image.open(image_path).convert("RGB") 
 
@@ -66,16 +70,10 @@ class Cocostuff_Dataset(Dataset):
             image = self.augment(image)
         
         image = self.base_transform(image)
-        image = image.permute(1,2,0)
 
-        # Convert to Lab color space
-        lab_image = cv2.cvtColor(np.asarray(image), cv2.COLOR_RGB2LAB).astype(np.float32)
-        
-        # Split channels
-        L = lab_image[:, :, 0] / 100
-        ab = lab_image[:, :, 1:] / 128  # Normalize ab to [-1,1]
+        L_channel,AB_channel=rgb2lab(image)
 
-        L_tensor = torch.tensor(L).unsqueeze(0)
-        AB_tensor = torch.tensor(ab).permute(2, 0, 1)
+        L_tensor = torch.tensor(L_channel).unsqueeze(0)
+        AB_tensor = torch.tensor(AB_channel).permute(2, 0, 1)
 
         return L_tensor, AB_tensor
