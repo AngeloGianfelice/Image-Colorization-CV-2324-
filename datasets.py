@@ -3,8 +3,6 @@ import torchvision.transforms as transforms
 from torch.utils.data import Dataset
 import os
 from PIL import Image
-import cv2
-import numpy as np
 import random
 import config
 from utils import rgb2lab
@@ -70,7 +68,7 @@ class Cocostuff_Dataset(Dataset):
             image = self.augment(image)
         
         image = self.base_transform(image)
-
+        
         L_channel,AB_channel=rgb2lab(image)
 
         L_tensor = torch.tensor(L_channel).unsqueeze(0)

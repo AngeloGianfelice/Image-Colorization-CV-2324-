@@ -2,12 +2,10 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
-from tqdm import tqdm
 import config
-from colorizers import ColorizationAutoencoder
+from colorizers import ColorizationAutoencoder,VGGAutoencoder
 from datasets import Cocostuff_Dataset
-from utils import lab2rgb,plot_loss,plot_images
-from random import randint
+from utils import EarlyStopping,train_model,test_model
 
 # Create datasets
 train_dataset = Cocostuff_Dataset(config.DATASET_PATH, phase="train")
@@ -26,100 +24,18 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 print(device)
 model = ColorizationAutoencoder().to(device)
 
-# === 3. Define Training Components === #
+# Freeze encoder weights
+#for param in model.encoder.parameters():
+    #param.requires_grad = False  # Encoder is fixed (pretrained weights)
+
+# === Define Training Components === #
 criterion = nn.MSELoss()  # Loss Function
 optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE)  # Optimizer
+early_stopping = EarlyStopping(patience=config.PATIENCE, path=f"models/best_model_{config.EPOCHS}.pth", verbose=True) # Early Stopping
 
-# === 4. Training Loop === #
-best_val_loss = 1  # Track best validation loss
-tloss_list=[]
-vloss_list=[]
-
-for epoch in range(config.EPOCHS):
-
-    model.train()  # Set model to training mode
-    train_loss = 0
-    train_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS} [Training]", leave=False)
-    
-    for batch_idx,(image_l, image_ab) in enumerate(train_progress):
-
-        image_l, image_ab = image_l.to(device), image_ab.to(device)
-        optimizer.zero_grad()
-        output = model(image_l)
-        loss = criterion(output, image_ab)
-        loss.backward()
-        optimizer.step()
-
-        train_loss += loss.item()
-        # Update tqdm description with batch loss
-        train_progress.set_postfix(loss=loss.item())
-
-    train_loss /= len(train_loader)
-
-    # Validation
-    model.eval()
-    val_loss = 0.0
-
-    val_progress = tqdm(val_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS} [Validation]", leave=False)
-
-    with torch.no_grad():
-        for idx, (L, AB) in enumerate(val_progress):
-            L, AB = L.to(device), AB.to(device)
-            output = model(L)
-            loss = criterion(output, AB)
-            val_loss += loss.item()
-            # Update tqdm description with batch loss
-            val_progress.set_postfix(loss=loss.item())
-    
-    val_loss /= len(val_loader)
-
-    # Print epoch summary
-    print(f"Epoch {epoch+1}/{config.EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
-
-    if val_loss < best_val_loss:
-        best_val_loss = val_loss
-        torch.save(model.state_dict(), f"models/best_model_{config.EPOCHS}.pth")
-        print("✅ Model Saved!")
-
-    tloss_list.append(train_loss)
-    vloss_list.append(val_loss)
-    
-print("✅ Training Complete!")
-plot_loss(tloss_list,vloss_list)
-
-# === 5. Testing Phase === #
-def test_model(model, test_loader):
-
-    model.eval()
-    input_imgs=[]
-    output_imgs=[]
-    gt_imgs=[]
-
-    # Run inference on test images
-    dataiter=iter(test_loader)
-    L, AB = next(dataiter)
-    L = L.to(device)
-    AB = AB.to(device)
-        
-    with torch.no_grad():
-        AB_pred = model(L)
-
-    for _ in range(config.NUM_TEST):
-
-        idx=randint(0,config.BATCH_SIZE)
-        input_l_sample = L[idx] * 100 #normalize in [0,1]
-        input_ab_sample = AB[idx]
-        output_ab_sample = AB_pred[idx] 
-
-        colorized = lab2rgb(input_l_sample,output_ab_sample)
-        ground_truth = lab2rgb(input_l_sample,input_ab_sample)
-
-        input_imgs.append(input_l_sample.cpu().squeeze(0))
-        output_imgs.append(colorized)
-        gt_imgs.append(ground_truth)
-
-    plot_images(input_imgs,output_imgs,gt_imgs)
+# === Train Colorization Model === #
+train_model(model=model, epochs=config.EPOCHS, device=device, train_loader=train_loader, val_loader=val_loader, criterion=criterion, optimizer=optimizer, scheduler=early_stopping)
 
 # Load Best Model for Testing
 model.load_state_dict(torch.load(f"models/best_model_{config.EPOCHS}.pth"))
-test_model(model, test_loader)
+test_model(model=model, device=device, test_loader=test_loader)
