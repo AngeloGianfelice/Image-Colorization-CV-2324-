@@ -6,9 +6,10 @@ from PIL import Image
 import random
 import config
 from utils import rgb2lab
+import cv2
 
 class Cocostuff_Dataset(Dataset):
-    def __init__(self, image_dir, phase="train", split_ratios=config.SPLIT_RATIO, image_size=config.IMG_SIZE, seed=config.SEED):
+    def __init__(self, image_dir, phase="train", split_ratios=config.SPLIT_RATIO, image_size=config.IMG_SIZE, seed=config.SEED,input_mode='gray'):
         
         """
         Args:
@@ -21,6 +22,7 @@ class Cocostuff_Dataset(Dataset):
         self.image_dir = image_dir
         self.phase = phase
         self.image_size = image_size
+        self.input_mode = input_mode
         self.image_paths = [os.path.join(image_dir, img) for img in os.listdir(image_dir) if img.endswith(('.jpg', '.png'))]
         
         # Ensure reproducibility
@@ -71,7 +73,17 @@ class Cocostuff_Dataset(Dataset):
         
         L_channel,AB_channel=rgb2lab(image)
 
-        L_tensor = torch.tensor(L_channel).unsqueeze(0)
+        if self.input_mode == 'rgb':
+            l_rgb = cv2.cvtColor(L_channel, cv2.COLOR_GRAY2RGB)  # Shape: (224, 224, 3)
+            L_tensor = torch.tensor(l_rgb).permute(2, 0, 1)
+
+        elif self.input_mode == 'gray':
+            L_tensor = torch.tensor(L_channel).unsqueeze(0)
+
+        else: 
+            print("Wrong input mode, Exiting...")
+            exit()
+
         AB_tensor = torch.tensor(AB_channel).permute(2, 0, 1)
 
         return L_tensor, AB_tensor

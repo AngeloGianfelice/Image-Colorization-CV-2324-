@@ -5,6 +5,7 @@ import torch
 import config
 from tqdm import tqdm
 from random import randint
+import torchvision.transforms as tf
 
 def rgb2lab(rgb_image): 
 
@@ -132,11 +133,11 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
     vloss_list=[]
 
     # === Training Loop === #
-    for epoch in range(config.EPOCHS):
+    for epoch in range(epochs):
 
         model.train()  # Set model to training mode
         train_loss = 0
-        train_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS} [Training]", leave=False)
+        train_progress = tqdm(train_loader, desc=f"Epoch {epoch+1}/{epochs} [Training]", leave=False)
 
         for batch_idx,(image_l, image_ab) in enumerate(train_progress):
 
@@ -157,7 +158,7 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
         model.eval()
         val_loss = 0.0
 
-        val_progress = tqdm(val_loader, desc=f"Epoch {epoch+1}/{config.EPOCHS} [Validation]", leave=False)
+        val_progress = tqdm(val_loader, desc=f"Epoch {epoch+1}/{epochs} [Validation]", leave=False)
 
         with torch.no_grad():
             for idx, (L, AB) in enumerate(val_progress):
@@ -171,7 +172,7 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
         val_loss /= len(val_loader)
 
         # Print epoch summary
-        print(f"Epoch {epoch+1}/{config.EPOCHS} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
+        print(f"Epoch {epoch+1}/{epochs} - Train Loss: {train_loss:.4f} - Val Loss: {val_loss:.4f}")
 
         tloss_list.append(train_loss)
         vloss_list.append(val_loss)
@@ -186,7 +187,7 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
     print("✅ Training Complete!")
     plot_loss(tloss_list,vloss_list)
 
-def test_model(model, device, test_loader):
+def test_model(model, device, test_loader, input_mode):
 
     model.eval()
     input_imgs=[]
@@ -204,15 +205,16 @@ def test_model(model, device, test_loader):
 
     for _ in range(config.NUM_TEST):
 
-        idx=randint(0,config.BATCH_SIZE)
-        input_l_sample = L[idx] * 100 #normalize in [0,1]
+        idx=randint(0,min(config.BATCH_SIZE,len(test_loader.dataset)-1))
+        output_ab = AB_pred[idx]
+
+        input_l = L[idx] * 100 #normalize in [0,1]
         input_ab_sample = AB[idx]
-        output_ab_sample = AB_pred[idx] 
+             
+        colorized = lab2rgb(input_l,output_ab)
+        ground_truth = lab2rgb(input_l,input_ab_sample)
 
-        colorized = lab2rgb(input_l_sample,output_ab_sample)
-        ground_truth = lab2rgb(input_l_sample,input_ab_sample)
-
-        input_imgs.append(input_l_sample.cpu().squeeze(0))
+        input_imgs.append(input_l.cpu().squeeze(0))
         output_imgs.append(colorized)
         gt_imgs.append(ground_truth)
 

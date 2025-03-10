@@ -1,6 +1,6 @@
 import torch.nn as nn
 import torchvision.models as models
-import torch
+import time
 
 class ColorizationAutoencoder(nn.Module):
     def __init__(self):
@@ -41,18 +41,21 @@ class ColorizationAutoencoder(nn.Module):
         
         x = self.encoder(x)
         x = self.decoder(x)
-        x= self.activation(x)
+        x = self.activation(x)
         
         
         return x
     
-class VGGAutoencoder(nn.Module):
+class ResnetAutoencoder(nn.Module):
     def __init__(self):
-        super(VGGAutoencoder, self).__init__()
+        super(ResnetAutoencoder, self).__init__()
         
         # Load pre-trained VGG16 and remove classification layers
-        vgg16 = models.vgg16(weights=models.VGG16_Weights.IMAGENET1K_FEATURES)
-        self.encoder = nn.Sequential(*list(vgg16.features.children()))  # Remove classification layers
+        resnet = models.resnet18(weights=models.ResNet18_Weights.DEFAULT)
+        self.encoder = nn.Sequential(*list(resnet.children())[:-2])  # Remove classification layers
+        # Freeze encoder weights
+        for param in self.encoder.parameters():
+            param.requires_grad = False  # Encoder is fixed (pretrained weights)
 
         # Decoder
         self.decoder = nn.Sequential(     #(W-1)x2+2
@@ -71,12 +74,8 @@ class VGGAutoencoder(nn.Module):
         self.activation=nn.Tanh()
 
     def forward(self, x):
-       
-        x=x.repeat(1,3,1,1) #convert grayscale to rgb tensor
 
-        with torch.no_grad():  # Freeze encoder computations
-            x = self.encoder(x)  # Extract features from VGG-16
-
+        x = self.encoder(x) # Extract features from VGG-16
         x = self.decoder(x)  # Reconstruct image
         x = self.activation(x)
 
