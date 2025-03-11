@@ -75,7 +75,7 @@ class ResnetAutoencoder(nn.Module):
 
     def forward(self, x):
 
-        x = self.encoder(x) # Extract features from VGG-16
+        x = self.encoder(x) # Extract features from Resnet-18
         x = self.decoder(x)  # Reconstruct image
         x = self.activation(x)
 

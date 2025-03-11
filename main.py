@@ -5,14 +5,21 @@ from torch.utils.data import DataLoader
 import config
 from colorizers import ColorizationAutoencoder,ResnetAutoencoder
 from datasets import Cocostuff_Dataset
-from utils import EarlyStopping,train_model,test_model
+from train_utils import EarlyStopping,train_model,test_model
 import argparse
 
 def main():
 
     # Print used device
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    print(device)
+
+    # Print all variables defined in config.py
+    print("\n# === Chosen Hyperparameters === #")
+    print(f"DEVICE = {torch.cuda.get_device_name()}")
+    for attr in dir(config):
+        if not attr.startswith("__"):  # Ignore built-in attributes
+            print(f"{attr} = {getattr(config, attr)}")
+    print("# ============================== #\n")
 
     parser = argparse.ArgumentParser(description="Parse two input arguments")
     
@@ -34,6 +41,8 @@ def main():
     else:
         print("wrong model chosen, Exiting...")
         return
+    
+    model_path=f"models/{args.model}_{config.EPOCHS}.pth"
 
     if args.mode == 'train':
 
@@ -52,7 +61,7 @@ def main():
         # === Define Training Components === #
         criterion = nn.MSELoss()  # Loss Function
         optimizer = optim.Adam(model.parameters(), lr=config.LEARNING_RATE)  # Optimizer
-        early_stopping = EarlyStopping(patience=config.PATIENCE, path=f"models/{args.model}_{config.EPOCHS}.pth", verbose=True) # Early Stopping
+        early_stopping = EarlyStopping(patience=config.PATIENCE, path=model_path, verbose=True) # Early Stopping
 
         # === Train Colorization Model === #
         train_model(model=model, epochs=config.EPOCHS, device=device, train_loader=train_loader, val_loader=val_loader, criterion=criterion, optimizer=optimizer, scheduler=early_stopping)
@@ -67,7 +76,7 @@ def main():
         print(f"✅ Test images={len(test_dataset)}")
 
         # Load Best Model for Testing
-        model.load_state_dict(torch.load(f"models/{args.model}_{config.EPOCHS}.pth"))
+        model.load_state_dict(torch.load(model_path))
         test_model(model=model, device=device, test_loader=test_loader,input_mode=input_mode)
         
     else:

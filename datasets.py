@@ -7,6 +7,8 @@ import random
 import config
 from utils import rgb2lab
 import cv2
+from matplotlib import pyplot as plt
+import numpy as np
 
 class Cocostuff_Dataset(Dataset):
     def __init__(self, image_dir, phase="train", split_ratios=config.SPLIT_RATIO, image_size=config.IMG_SIZE, seed=config.SEED,input_mode='gray'):
@@ -42,20 +44,19 @@ class Cocostuff_Dataset(Dataset):
         elif phase == "test":
             self.image_paths = self.image_paths[train_size + val_size:]
 
-        # Define transformations
-        self.base_transform = transforms.Compose([
-            transforms.Resize((image_size, image_size)),
-            transforms.ToTensor()
-        ])
-        
         if phase == "train":
             self.augment = transforms.Compose([
                 transforms.RandomHorizontalFlip(p=0.5),
                 transforms.RandomRotation(degrees=15),
-                transforms.RandomResizedCrop(size=image_size, scale=(0.8, 1.0))
+                transforms.RandomResizedCrop(size=image_size, scale=(0.8, 1.0)),
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor()
             ])
         else:
-            self.augment = None  # No augmentation for val/test
+            self.augment = transforms.Compose([
+                transforms.Resize((image_size, image_size)),
+                transforms.ToTensor()
+             ]) # No augmentation for val/test
 
     def __len__(self):
 
@@ -64,14 +65,11 @@ class Cocostuff_Dataset(Dataset):
     def __getitem__(self, idx):
 
         image_path= self.image_paths[idx]  # Get image path
-        image = Image.open(image_path).convert("RGB") 
+        input_image = Image.open(image_path).convert("RGB") 
 
-        if self.phase == "train" and self.augment:
-            image = self.augment(image)
+        augm_image = self.augment(input_image)
         
-        image = self.base_transform(image)
-        
-        L_channel,AB_channel=rgb2lab(image)
+        L_channel,AB_channel=rgb2lab(augm_image)
 
         if self.input_mode == 'rgb':
             l_rgb = cv2.cvtColor(L_channel, cv2.COLOR_GRAY2RGB)  # Shape: (224, 224, 3)
@@ -85,5 +83,5 @@ class Cocostuff_Dataset(Dataset):
             exit()
 
         AB_tensor = torch.tensor(AB_channel).permute(2, 0, 1)
-
-        return L_tensor, AB_tensor
+        
+        return L_tensor, AB_tensor,augm_image
