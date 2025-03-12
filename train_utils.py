@@ -6,6 +6,9 @@ from utils import plot_loss,plot_images,lab2rgb,rgb2lab,plot_prediction
 import torchvision.transforms as transforms
 from PIL import Image
 import cv2
+import torch.nn.functional as F
+import torchmetrics
+import numpy as np
 
 class EarlyStopping:
     def __init__(self, patience=10, delta=0, path="checkpoint.pth", verbose=False):
@@ -112,49 +115,67 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
 def test_model(model, device, test_loader, input_mode):
 
     model.eval()
-    input_imgs=[]
-    output_imgs=[]
-    gt_imgs=[]
+    mse_total, psnr_total, ssim_total,delta_e_total = 0.0, 0.0, 0.0, 0.0
+    ssim_fn = torchmetrics.image.StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
+    num_images=len(test_loader.dataset)
 
-    # Run inference on test images
-    dataiter=iter(test_loader)
-    L, AB, RGB = next(dataiter)
-    L = L.to(device)
-    AB = AB.to(device)
-    RGB = RGB.to(device)
-        
     with torch.no_grad():
-        AB_pred = model(L)
+        for idx,(L, AB, RGB)in enumerate(test_loader):
+            L = L.to(device)
+            AB = AB.to(device)
+            RGB = RGB.to(device)
+        
+            AB_pred = model(L)
 
-    for _ in range(config.NUM_TEST):
+            for i in range(len(L)):
 
-        idx=randint(0,min(config.BATCH_SIZE,len(test_loader.dataset)-1))
-        output_ab = AB_pred[idx]
+                output_ab = AB_pred[i]
+                input_l = L[i] 
+                input_rgb = RGB[i]
+                input_ab_sample = AB[i]
 
-        input_l = L[idx] 
-        input_rgb = RGB[idx]
-        input_ab_sample = AB[idx]
-
-        input_l *= 100 #denormalization
+                input_l *= 100 #denormalization
 
 
-        if input_mode == 'rgb':
+                if input_mode == 'rgb':
     
-            input=input_l[0].cpu()
-            colorized = lab2rgb(input_l[0].unsqueeze(0),output_ab)
-            ground_truth = input_rgb.cpu().permute(1,2,0)
+                    input=input_l[0].cpu()
+                    colorized = lab2rgb(input_l[0].unsqueeze(0),output_ab)
+                    ground_truth = np.asarray(input_rgb.cpu().permute(1,2,0))
 
-        elif input_mode == 'gray':
+                elif input_mode == 'gray':
             
-            input = input_l.cpu().squeeze(0)
-            colorized = lab2rgb(input_l,output_ab)
-            ground_truth = lab2rgb(input_l,input_ab_sample)
+                    input = input_l.cpu().squeeze(0)
+                    colorized = lab2rgb(input_l,output_ab)
+                    ground_truth = lab2rgb(input_l,input_ab_sample)
 
-        input_imgs.append(input)
-        output_imgs.append(colorized)
-        gt_imgs.append(ground_truth)
+                # Compute MSE
+                mse = F.mse_loss(torch.tensor(colorized).permute(2,1,0), torch.tensor(ground_truth).permute(2,1,0), reduction="mean").item()
+                
+                max_pixel_value = 1 #images in [0,1]
+                
+                psnr = 10 * np.log10(max_pixel_value ** 2 / mse).item()
 
-    plot_images(input_imgs,output_imgs,gt_imgs)
+                # Compute SSIM
+                ssim = ssim_fn(torch.tensor(colorized).permute(2,1,0).unsqueeze(0), torch.tensor(ground_truth).permute(2,1,0).unsqueeze(0)).item()
+
+                #compute delta-e
+                delta_e = np.mean(np.sqrt(np.sum((cv2.cvtColor(colorized,cv2.COLOR_RGB2LAB) - cv2.cvtColor(ground_truth,cv2.COLOR_RGB2LAB)) ** 2, axis=-1))) 
+
+                # Accumulate results
+                mse_total += mse
+                psnr_total += psnr 
+                ssim_total += ssim  
+                delta_e_total += delta_e 
+
+    # Compute mean values
+    mse_avg = mse_total / num_images
+    psnr_avg = psnr_total / num_images
+    ssim_avg = ssim_total / num_images
+    delta_e_avg = delta_e_total / num_images
+
+    print(f"MSE: {mse_avg}, PSNR: {psnr_avg} SSIM: {ssim_avg}, ΔE: {delta_e_avg}")
+    return 
 
 def predict(image_path, model, device, input_mode):
 
