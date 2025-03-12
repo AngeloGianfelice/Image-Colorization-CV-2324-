@@ -5,7 +5,7 @@ from torch.utils.data import DataLoader
 import config
 from colorizers import ColorizationAutoencoder,ResnetAutoencoder
 from datasets import Cocostuff_Dataset
-from train_utils import EarlyStopping,train_model,test_model
+from train_utils import EarlyStopping,train_model,test_model,predict
 import argparse
 
 def main():
@@ -26,6 +26,7 @@ def main():
     # Add arguments
     parser.add_argument("--model", type=str, required=True, default="model1", help="model1 or model2")
     parser.add_argument("--mode", type=str, required=True, default="train", help="train or test")
+    parser.add_argument("--image_path", type=str, help="path of image to colorize")
 
     # Parse arguments
     args = parser.parse_args()
@@ -78,6 +79,11 @@ def main():
         # Load Best Model for Testing
         model.load_state_dict(torch.load(model_path))
         test_model(model=model, device=device, test_loader=test_loader,input_mode=input_mode)
+
+    elif args.mode == 'predict':
+        # Load Best Model for Testing
+        model.load_state_dict(torch.load(model_path))
+        predict(image_path=args.image_path, model=model, device=device, input_mode=input_mode)
         
     else:
         print("wrong mode chosen, Exiting...")

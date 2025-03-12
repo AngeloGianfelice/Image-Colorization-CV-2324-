@@ -2,7 +2,10 @@ import config
 from tqdm import tqdm
 from random import randint
 import torch
-from utils import plot_loss,plot_images,lab2rgb
+from utils import plot_loss,plot_images,lab2rgb,rgb2lab
+import torchvision.transforms as transforms
+from PIL import Image
+import cv2
 
 class EarlyStopping:
     def __init__(self, patience=10, delta=0, path="checkpoint.pth", verbose=False):
@@ -152,3 +155,56 @@ def test_model(model, device, test_loader, input_mode):
         gt_imgs.append(ground_truth)
 
     plot_images(input_imgs,output_imgs,gt_imgs)
+
+def predict(image_path,model, device, input_mode):
+
+    transform=transforms.Compose([
+                transforms.Resize((config.IMG_SIZE, config.IMG_SIZE)),
+                transforms.ToTensor()
+             ]) # No augmentation for val/test
+
+    input_image = Image.open(image_path).convert("RGB") 
+
+    augm_image = transform(input_image)
+        
+    L_channel,AB_channel=rgb2lab(augm_image)
+
+    if input_mode == 'rgb':
+        l_rgb = cv2.cvtColor(L_channel, cv2.COLOR_GRAY2RGB)  # Shape: (224, 224, 3)
+        L_tensor = torch.tensor(l_rgb).permute(2, 0, 1)
+
+    elif input_mode == 'gray':
+        L_tensor = torch.tensor(L_channel).unsqueeze(0)
+
+    else: 
+        print("Wrong input mode, Exiting...")
+        exit()
+
+    AB_tensor = torch.tensor(AB_channel).permute(2, 0, 1)
+    L_tensor=L_tensor.to(device)
+    AB_tensor=AB_tensor.to(device)
+    augm_image=augm_image.to(device)
+
+    with torch.no_grad():
+        AB_pred = model(L_tensor.squeeze(0))
+
+    L_tensor *= 100 #denormalization
+
+
+    if input_mode == 'rgb':
+    
+        input=L_tensor[0].cpu()
+        colorized = lab2rgb(L_tensor[0].unsqueeze(0),AB_pred)
+        ground_truth = augm_image.cpu().permute(1,2,0)
+
+    elif input_mode == 'gray':
+            
+        input = L_tensor.cpu().squeeze(0)
+        colorized = lab2rgb(L_tensor,AB_pred)
+        ground_truth = lab2rgb(L_tensor,AB_tensor)
+
+    plot_images([input],[colorized],[ground_truth])
+
+    
+
+        
