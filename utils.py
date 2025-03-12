@@ -96,3 +96,25 @@ def plot_images(grayscale_images, colorized_images, ground_truth_images):
                 axes[i, j].axis("off")
 
     plt.show()
+
+def plot_prediction(input,prediction):
+
+    # Set up figure layout
+    fig, axes = plt.subplots(1, 2, gridspec_kw={'wspace': 0.01, 'hspace': 0.01})
+
+    # Set column titles (only at the top)
+    column_titles = ["Grayscale", "Colorized"]
+
+    for col, title in enumerate(column_titles):
+        axes[col].set_title(title, fontsize=12, fontweight="bold")
+
+    axes[0].imshow(input, cmap="gray")
+    axes[1].imshow(prediction)  # Assuming RGB format
+    
+    # Remove axes for a cleaner layout
+    for j in range(2):
+        axes[j].axis("off")
+
+    plt.show()
+    
+

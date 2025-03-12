@@ -2,7 +2,7 @@ import config
 from tqdm import tqdm
 from random import randint
 import torch
-from utils import plot_loss,plot_images,lab2rgb,rgb2lab
+from utils import plot_loss,plot_images,lab2rgb,rgb2lab,plot_prediction
 import torchvision.transforms as transforms
 from PIL import Image
 import cv2
@@ -156,7 +156,7 @@ def test_model(model, device, test_loader, input_mode):
 
     plot_images(input_imgs,output_imgs,gt_imgs)
 
-def predict(image_path,model, device, input_mode):
+def predict(image_path, model, device, input_mode):
 
     transform=transforms.Compose([
                 transforms.Resize((config.IMG_SIZE, config.IMG_SIZE)),
@@ -168,10 +168,11 @@ def predict(image_path,model, device, input_mode):
     augm_image = transform(input_image)
         
     L_channel,AB_channel=rgb2lab(augm_image)
+    
 
     if input_mode == 'rgb':
         l_rgb = cv2.cvtColor(L_channel, cv2.COLOR_GRAY2RGB)  # Shape: (224, 224, 3)
-        L_tensor = torch.tensor(l_rgb).permute(2, 0, 1)
+        L_tensor = torch.tensor(l_rgb).permute(2, 0, 1).unsqueeze(0)
 
     elif input_mode == 'gray':
         L_tensor = torch.tensor(L_channel).unsqueeze(0)
@@ -186,24 +187,22 @@ def predict(image_path,model, device, input_mode):
     augm_image=augm_image.to(device)
 
     with torch.no_grad():
-        AB_pred = model(L_tensor.squeeze(0))
+        AB_pred = model(L_tensor)
 
     L_tensor *= 100 #denormalization
 
-
     if input_mode == 'rgb':
     
-        input=L_tensor[0].cpu()
-        colorized = lab2rgb(L_tensor[0].unsqueeze(0),AB_pred)
-        ground_truth = augm_image.cpu().permute(1,2,0)
+        input=L_tensor.cpu().squeeze(0)
+        colorized = lab2rgb((L_tensor[0][0].unsqueeze(0)),AB_pred[0])
+        input=input.permute(1,2,0) / 100
 
     elif input_mode == 'gray':
-            
+         
         input = L_tensor.cpu().squeeze(0)
         colorized = lab2rgb(L_tensor,AB_pred)
-        ground_truth = lab2rgb(L_tensor,AB_tensor)
-
-    plot_images([input],[colorized],[ground_truth])
+        
+    plot_prediction(input,colorized)
 
     
 
