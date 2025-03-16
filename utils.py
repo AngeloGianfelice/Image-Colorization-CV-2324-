@@ -29,15 +29,15 @@ def lab2rgb(l_channel,ab_channel):
 
     return RGB_image
 
-def plot_loss(tlosses,vlosses, title="Loss Curve", xlabel="Epoch", ylabel="Loss"):
+def plot_loss(tlosses,vlosses, title="Loss Curve", xlabel="Epochs", ylabel="Loss", fname="plots/loss.png"):
     plt.style.use('bmh')
     # Create the plot
     plt.figure(figsize=(8, 5))
 
     epochs=np.arange(1,len(tlosses) + 1)
     
-    plt.plot(epochs, tlosses, marker='o', linestyle='-', color='royalblue', label='Train Loss')
-    plt.plot(epochs, vlosses, marker='s', linestyle='--', color='darkorange', label="Validation Loss")
+    plt.plot(epochs,tlosses, marker='o', linestyle='-', color='blue', label='Train Loss')
+    plt.plot(epochs,vlosses, marker='s', linestyle='--', color='red', label="Validation Loss")
     
     # Labels & title
     ticks=np.arange(5,len(tlosses) + 1,5)
@@ -46,7 +46,7 @@ def plot_loss(tlosses,vlosses, title="Loss Curve", xlabel="Epoch", ylabel="Loss"
     plt.ylabel(ylabel, fontsize=12)
     plt.title(title, fontsize=14)
     plt.legend()
-    plt.savefig(f"figures/loss.png")
+    plt.savefig(fname)
 
     # Show the plot
     plt.show()

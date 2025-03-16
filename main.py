@@ -44,6 +44,7 @@ def main():
         return
     
     model_path=f"models/{args.model}_{config.EPOCHS}.pth"
+    loss_fname=f"plots/{args.model}_{config.EPOCHS}_loss.png"
 
     if args.mode == 'train':
 
@@ -65,7 +66,7 @@ def main():
         early_stopping = EarlyStopping(patience=config.PATIENCE, path=model_path, verbose=True) # Early Stopping
 
         # === Train Colorization Model === #
-        train_model(model=model, epochs=config.EPOCHS, device=device, train_loader=train_loader, val_loader=val_loader, criterion=criterion, optimizer=optimizer, scheduler=early_stopping)
+        train_model(model=model, epochs=config.EPOCHS, device=device, train_loader=train_loader, val_loader=val_loader, criterion=criterion, optimizer=optimizer, scheduler=early_stopping,fname=loss_fname)
 
         # === Testing Model === #
         test_model(model=model, device=device, test_loader=test_loader,input_mode=input_mode)
@@ -78,7 +79,7 @@ def main():
 
         # Load Best Model for Testing
         model.load_state_dict(torch.load(model_path))
-        test_model(model=model, device=device, test_loader=test_loader,input_mode=input_mode)
+        test_model(model=model, device=device, test_loader=test_loader, input_mode=input_mode)
 
     elif args.mode == 'predict':
         # Load Best Model for Testing

@@ -2,3 +2,4 @@ datasets/
 test.py
 __pycache__/
 .vscode/
+figures/

@@ -52,7 +52,7 @@ class EarlyStopping:
         torch.save(model.state_dict(), self.path)
         self.best_loss = val_loss
 
-def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,scheduler):
+def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,scheduler,fname):
 
     tloss_list=[] #for plotting
     vloss_list=[]
@@ -72,7 +72,6 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
             loss = criterion(output, image_ab)
             loss.backward()
             optimizer.step()
-
             train_loss += loss.item()
             # Update tqdm description with batch loss
             train_progress.set_postfix(loss=loss.item())
@@ -110,7 +109,7 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
             break
     
     print("✅ Training Complete!")
-    plot_loss(tloss_list,vloss_list)
+    plot_loss(tloss_list,vloss_list,fname=fname)
 
 def test_model(model, device, test_loader, input_mode):
 
@@ -118,6 +117,7 @@ def test_model(model, device, test_loader, input_mode):
     mse_total, psnr_total, ssim_total,delta_e_total = 0.0, 0.0, 0.0, 0.0
     ssim_fn = torchmetrics.image.StructuralSimilarityIndexMeasure(data_range=1.0).to(device)
     num_images=len(test_loader.dataset)
+    graylist,colorlist,gt_list=[],[],[]
 
     with torch.no_grad():
         for idx,(L, AB, RGB)in enumerate(test_loader):
@@ -149,6 +149,14 @@ def test_model(model, device, test_loader, input_mode):
                     colorized = lab2rgb(input_l,output_ab)
                     ground_truth = lab2rgb(input_l,input_ab_sample)
 
+                if len(graylist)<=config.NUM_TEST:
+                    graylist.append(input)
+                    colorlist.append(colorized)
+                    gt_list.append(ground_truth)
+                
+                if  len(graylist)==config.NUM_TEST:
+                    plot_images(graylist,colorlist,gt_list)
+
                 # Compute MSE
                 mse = F.mse_loss(torch.tensor(colorized).permute(2,1,0), torch.tensor(ground_truth).permute(2,1,0), reduction="mean").item()
                 
@@ -174,10 +182,13 @@ def test_model(model, device, test_loader, input_mode):
     ssim_avg = ssim_total / num_images
     delta_e_avg = delta_e_total / num_images
 
-    print(f"MSE: {mse_avg}, PSNR: {psnr_avg} SSIM: {ssim_avg}, ΔE: {delta_e_avg}")
+    print(f"MSE: {mse_avg:.4f}, PSNR: {psnr_avg:.4f} SSIM: {ssim_avg:.4f}, ΔE: {delta_e_avg:.4f}")
+    print("✅ Testing Complete!")
     return 
 
 def predict(image_path, model, device, input_mode):
+
+    model.eval()
 
     transform=transforms.Compose([
                 transforms.Resize((config.IMG_SIZE, config.IMG_SIZE)),
@@ -190,14 +201,12 @@ def predict(image_path, model, device, input_mode):
         
     L_channel,AB_channel=rgb2lab(augm_image)
     
-
     if input_mode == 'rgb':
         l_rgb = cv2.cvtColor(L_channel, cv2.COLOR_GRAY2RGB)  # Shape: (224, 224, 3)
         L_tensor = torch.tensor(l_rgb).permute(2, 0, 1).unsqueeze(0)
 
     elif input_mode == 'gray':
-        L_tensor = torch.tensor(L_channel).unsqueeze(0)
-
+        L_tensor = torch.tensor(L_channel)[None,None,:,:]
     else: 
         print("Wrong input mode, Exiting...")
         exit()
@@ -219,9 +228,9 @@ def predict(image_path, model, device, input_mode):
         input=input.permute(1,2,0) / 100
 
     elif input_mode == 'gray':
-         
-        input = L_tensor.cpu().squeeze(0)
-        colorized = lab2rgb(L_tensor,AB_pred)
+        
+        input = L_tensor.cpu().squeeze(dim=(0, 1))
+        colorized = lab2rgb(L_tensor.squeeze(0),AB_pred.squeeze(0)) 
         
     plot_prediction(input,colorized)
 
