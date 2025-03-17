@@ -7,10 +7,8 @@ import random
 import config
 from utils import rgb2lab
 import cv2
-from matplotlib import pyplot as plt
-import numpy as np
 
-class Cocostuff_Dataset(Dataset):
+class Places_Dataset(Dataset):
     def __init__(self, image_dir, phase="train", split_ratios=config.SPLIT_RATIO, image_size=config.IMG_SIZE, seed=config.SEED,input_mode='gray'):
         
         """

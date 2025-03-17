@@ -68,7 +68,7 @@ def plot_images(grayscale_images, colorized_images, ground_truth_images):
     fig, axes = plt.subplots(num_rows, 3, figsize=(9, num_rows * 2), gridspec_kw={'wspace': 0.01, 'hspace': 0.01})
 
     # Set column titles (only at the top)
-    column_titles = ["Grayscale", "Colorized", "Ground Truth"]
+    column_titles = ["Grayscale", "Colorized(GAE)", "Ground Truth"]
 
     if num_rows == 1:
         for col, title in enumerate(column_titles):

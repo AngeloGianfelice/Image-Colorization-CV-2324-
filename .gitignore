@@ -3,3 +3,4 @@ test.py
 __pycache__/
 .vscode/
 figures/
+loss_log.txt

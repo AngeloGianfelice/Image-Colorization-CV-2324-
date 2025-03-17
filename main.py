@@ -4,7 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 import config
 from colorizers import ColorizationAutoencoder,ResnetAutoencoder
-from datasets import Cocostuff_Dataset
+from datasets import Places_Dataset
 from train_utils import EarlyStopping,train_model,test_model,predict
 import argparse
 
@@ -49,9 +49,9 @@ def main():
     if args.mode == 'train':
 
         # Create datasets
-        train_dataset = Cocostuff_Dataset(config.DATASET_PATH, phase="train",input_mode=input_mode)
-        val_dataset = Cocostuff_Dataset(config.DATASET_PATH, phase="val",input_mode=input_mode)
-        test_dataset = Cocostuff_Dataset(config.DATASET_PATH, phase="test",input_mode=input_mode)
+        train_dataset = Places_Dataset(config.DATASET_PATH, phase="train",input_mode=input_mode)
+        val_dataset = Places_Dataset(config.DATASET_PATH, phase="val",input_mode=input_mode)
+        test_dataset = Places_Dataset(config.DATASET_PATH, phase="test",input_mode=input_mode)
 
         # Create DataLoaders
         train_loader = DataLoader(train_dataset, batch_size=config.BATCH_SIZE, shuffle=True,num_workers=4,pin_memory=True)
@@ -73,7 +73,7 @@ def main():
 
     elif args.mode == 'test':
 
-        test_dataset = Cocostuff_Dataset(config.DATASET_PATH, phase="test",input_mode=input_mode)
+        test_dataset = Places_Dataset(config.DATASET_PATH, phase="test",input_mode=input_mode)
         test_loader = DataLoader(test_dataset, batch_size=config.BATCH_SIZE, shuffle=False,num_workers=4,pin_memory=True)
         print(f"✅ Test images={len(test_dataset)}")
 

@@ -110,6 +110,12 @@ def train_model(model,epochs,device,train_loader,val_loader,criterion,optimizer,
     
     print("✅ Training Complete!")
     plot_loss(tloss_list,vloss_list,fname=fname)
+    with open("loss_log.txt", "w") as f:
+        for loss in tloss_list:
+            f.write(f"{loss}\n")  # Write each loss value on a new line
+        f.write("## ============= ##\n")
+        for loss in vloss_list:
+            f.write(f"{loss}\n")  # Write each loss value on a new line
 
 def test_model(model, device, test_loader, input_mode):
 
@@ -157,6 +163,7 @@ def test_model(model, device, test_loader, input_mode):
                 if  len(graylist)==config.NUM_TEST:
                     plot_images(graylist,colorlist,gt_list)
 
+            
                 # Compute MSE
                 mse = F.mse_loss(torch.tensor(colorized).permute(2,1,0), torch.tensor(ground_truth).permute(2,1,0), reduction="mean").item()
                 
