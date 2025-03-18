@@ -1,8 +1,7 @@
 import config
 from tqdm import tqdm
-from random import randint
 import torch
-from utils import plot_loss,plot_images,lab2rgb,rgb2lab,plot_prediction
+from src.utils import plot_loss,plot_images,lab2rgb,rgb2lab,plot_prediction
 import torchvision.transforms as transforms
 from PIL import Image
 import cv2

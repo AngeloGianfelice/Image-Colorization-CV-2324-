@@ -5,7 +5,7 @@ import os
 from PIL import Image
 import random
 import config
-from utils import rgb2lab
+from src.utils import rgb2lab
 import cv2
 
 class Places_Dataset(Dataset):

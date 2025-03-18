@@ -1,7 +1,8 @@
 import matplotlib.pyplot as plt
 import numpy as np
-import cv2
 import torch
+import cv2
+
 
 def rgb2lab(rgb_image): 
 

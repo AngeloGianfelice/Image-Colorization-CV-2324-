@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.optim as optim
 from torch.utils.data import DataLoader
 import config
-from colorizers import ColorizationAutoencoder,ResnetAutoencoder
-from datasets import Places_Dataset
-from train_utils import EarlyStopping,train_model,test_model,predict
+from src.colorizers import ColorizationAutoencoder,ResnetAutoencoder
+from src.datasets import Places_Dataset
+from src.train_utils import EarlyStopping,train_model,test_model,predict
 import argparse
 
 def main():
