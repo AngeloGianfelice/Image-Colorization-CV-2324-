@@ -160,9 +160,8 @@ def test_model(model, device, test_loader, input_mode):
                     colorlist.append(colorized)
                     gt_list.append(ground_truth)
                 
-                if  len(graylist)==config.NUM_TEST:
+                if  len(graylist) == config.NUM_TEST:
                     plot_images(graylist,colorlist,gt_list)
-
             
                 # Compute MSE
                 mse = F.mse_loss(torch.tensor(colorized).permute(2,1,0), torch.tensor(ground_truth).permute(2,1,0), reduction="mean").item()
